@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "156765365990",
+    "project_id": "inovacion-497fe",
+    "storage_bucket": "inovacion-497fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:156765365990:android:7c9c81f8ef677e7027fd27",
+        "android_client_info": {
+          "package_name": "com.example.proyecto_inovacion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFfve3CEjAk-rW8rMdmTrxKXGEw4gnCxM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
