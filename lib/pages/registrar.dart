@@ -1,8 +1,7 @@
-// lib/screens/register_screen.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:proyecto_inovacion/models/usuarios.dart';
+import 'package:bcrypt/bcrypt.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,73 +11,84 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passController = TextEditingController();
 
   String _selectedRole = 'colaborador';
 
   Future<void> _register() async {
+    final username = _usernameController.text.trim();
+    final name = _nameController.text.trim();
+    final password = _passController.text.trim();
+
+    if (username.isEmpty || name.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor llena todos los campos')),
+      );
+      return;
+    }
+
     try {
-      final userCred = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passController.text.trim(),
-      );
+      // Verificar si ya existe el username
+      final existing = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
 
-      final appUser = AppUser(
-        uid: userCred.user!.uid,
-        name: _nameController.text,
-        email: _emailController.text,
-        rol: _selectedRole,
-      );
-
-      await _firestore.collection('users').doc(appUser.uid).set(appUser.toMap());
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registro exitoso')),
-      );
-
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    } on FirebaseAuthException catch (e) {
-      String msg;
-      if (e.code == 'email-already-in-use') {
-        msg = 'El correo ya está registrado.';
-      } else if (e.code == 'invalid-email') {
-        msg = 'El correo no es válido.';
-      } else if (e.code == 'weak-password') {
-        msg = 'La contraseña es muy débil.';
-      } else {
-        msg = 'Error de autenticación: ${e.message}';
+      if (existing.docs.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El nombre de usuario ya existe')),
+        );
+        return;
       }
+
+      final hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+
+      final newUser = <String, dynamic>{
+        'name': name,
+        'username': username,
+        'passwordHash': hashedPassword,
+        'rol': _selectedRole,
+      };
+
+      final docRef = await _firestore.collection('users').add(newUser);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
+        const SnackBar(content: Text('Usuario creado con éxito')),
       );
-    } on FirebaseException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de Firebase: ${e.message}')),
-      );
+
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error inesperado: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Registro")),
+      appBar: AppBar(title: const Text("Crear usuario")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Nombre")),
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Correo")),
-            TextField(controller: _passController, obscureText: true, decoration: const InputDecoration(labelText: "Contraseña")),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: "Nombre completo"),
+            ),
+            TextField(
+              controller: _usernameController,
+              decoration: const InputDecoration(labelText: "Nombre de usuario"),
+            ),
+            TextField(
+              controller: _passController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "Contraseña"),
+            ),
             DropdownButton<String>(
               value: _selectedRole,
               items: const [
@@ -88,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onChanged: (value) => setState(() => _selectedRole = value!),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _register, child: const Text("Registrarse")),
+            ElevatedButton(onPressed: _register, child: const Text("Crear usuario")),
           ],
         ),
       ),
